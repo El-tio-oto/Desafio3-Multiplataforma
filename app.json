@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "zenith-finance",
+    "slug": "zenith-finance",
+    "version": "1.0.0",
+    "sdkVersion": "54.0.0", 
+    "platforms": ["ios", "android", "web"],
+    "main": "index.js"
+  }
+}
