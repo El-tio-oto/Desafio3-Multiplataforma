@@ -1,24 +1,70 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Dimensions } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useData } from '../context/DataContext';
 import { Ionicons } from '@expo/vector-icons';
+import { PieChart } from 'react-native-chart-kit';
 
 const DashboardScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
+  const { 
+    transactions, 
+    accounts, 
+    budgets, 
+    getMonthlyTotals, 
+    getFilteredTransactions, 
+    getExpensesByCategory,
+    selectedFilter,
+    setSelectedFilter 
+  } = useData();
+  const screenWidth = Dimensions.get('window').width;
 
-  const transactions = [
-    { id: 1, title: 'Netflix', category: 'Entretenimiento', amount: -15.99, date: 'Hoy', icon: 'tv-outline', color: '#E50914' },
-    { id: 2, title: 'Spotify', category: 'Música', amount: -9.99, date: 'Ayer', icon: 'musical-notes-outline', color: '#1DB954' },
-    { id: 3, title: 'Salario', category: 'Ingreso', amount: 2500.00, date: '15 May', icon: 'cash-outline', color: '#00C2FF' },
-    { id: 4, title: 'Amazon', category: 'Compras', amount: -89.50, date: '14 May', icon: 'cart-outline', color: '#FF9900' },
-  ];
+  const monthlyTotals = getMonthlyTotals();
+  const filteredTransactions = getFilteredTransactions();
+  const expensesByCategory = getExpensesByCategory();
 
-  const categories = [
-    { name: 'Comida', amount: 450, percentage: 35, color: '#FF6B6B' },
-    { name: 'Transporte', amount: 200, percentage: 25, color: '#4ECDC4' },
-    { name: 'Entretenimiento', amount: 150, percentage: 20, color: '#FFE66D' },
-    { name: 'Otros', amount: 100, percentage: 20, color: '#95E1D3' },
-  ];
+  const categoryIcons = {
+    'Comida': 'restaurant-outline',
+    'Transporte': 'car-outline',
+    'Entretenimiento': 'film-outline',
+    'Música': 'musical-notes-outline',
+    'Compras': 'cart-outline',
+    'Otros': 'ellipsis-horizontal-outline',
+  };
+
+  const categoryColors = {
+    'Comida': '#FF6B6B',
+    'Transporte': '#4ECDC4',
+    'Entretenimiento': '#FFE66D',
+    'Música': '#1DB954',
+    'Compras': '#FF9900',
+    'Otros': '#95E1D3',
+  };
+
+  const pieChartData = expensesByCategory.map(cat => ({
+    name: cat.name,
+    population: cat.percentage,
+    color: cat.color,
+    legendFontColor: '#FFF',
+    legendFontSize: 12,
+  }));
+
+  const chartConfig = {
+    backgroundColor: 'transparent',
+    backgroundGradientFrom: 'transparent',
+    backgroundGradientTo: 'transparent',
+    decimalPlaces: 0,
+    color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+    labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+    style: {
+      borderRadius: 16,
+    },
+    propsForDots: {
+      r: '6',
+      strokeWidth: '2',
+      stroke: '#fff',
+    },
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -40,23 +86,50 @@ const DashboardScreen = ({ navigation }) => {
         {/* Balance Card */}
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>Balance Total Actual</Text>
-          <Text style={styles.balanceAmount}>$12,450.00</Text>
+          <Text style={styles.balanceAmount}>${monthlyTotals.netBalance.toFixed(2)}</Text>
           <View style={styles.balanceChange}>
-            <Ionicons name="trending-up" size={16} color="#00C2FF" />
-            <Text style={styles.balanceChangeText}>+8.5% este mes</Text>
+            <Ionicons name={monthlyTotals.netBalance >= 0 ? 'trending-up' : 'trending-down'} size={16} color={monthlyTotals.netBalance >= 0 ? '#00C2FF' : '#ff4444'} />
+            <Text style={[styles.balanceChangeText, { color: monthlyTotals.netBalance >= 0 ? '#00C2FF' : '#ff4444' }]}>
+              {monthlyTotals.netBalance >= 0 ? '+' : ''}{((monthlyTotals.netBalance / (monthlyTotals.income || 1)) * 100).toFixed(1)}% este mes
+            </Text>
           </View>
         </View>
 
         {/* Account Filters */}
         <View style={styles.filterContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {['Todas las Cuentas', 'Chase Bank', 'Capital One', 'Efectivo'].map((filter, index) => (
+            <TouchableOpacity 
+              style={[styles.filterChip, selectedFilter === 'all' && styles.filterChipActive]}
+              onPress={() => setSelectedFilter('all')}
+            >
+              <Text style={[styles.filterText, selectedFilter === 'all' && styles.filterTextActive]}>
+                Todas las Cuentas
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.filterChip, selectedFilter === 'income' && styles.filterChipActive]}
+              onPress={() => setSelectedFilter('income')}
+            >
+              <Text style={[styles.filterText, selectedFilter === 'income' && styles.filterTextActive]}>
+                Ingresos
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.filterChip, selectedFilter === 'expense' && styles.filterChipActive]}
+              onPress={() => setSelectedFilter('expense')}
+            >
+              <Text style={[styles.filterText, selectedFilter === 'expense' && styles.filterTextActive]}>
+                Gastos
+              </Text>
+            </TouchableOpacity>
+            {accounts.map((account) => (
               <TouchableOpacity 
-                key={index} 
-                style={[styles.filterChip, index === 0 && styles.filterChipActive]}
+                key={account.id}
+                style={[styles.filterChip, selectedFilter === account.name && styles.filterChipActive]}
+                onPress={() => setSelectedFilter(account.name)}
               >
-                <Text style={[styles.filterText, index === 0 && styles.filterTextActive]}>
-                  {filter}
+                <Text style={[styles.filterText, selectedFilter === account.name && styles.filterTextActive]}>
+                  {account.name}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -71,7 +144,7 @@ const DashboardScreen = ({ navigation }) => {
             </View>
             <View>
               <Text style={styles.summaryLabel}>Ingresos</Text>
-              <Text style={styles.summaryValue}>$3,500.00</Text>
+              <Text style={styles.summaryValue}>${monthlyTotals.income.toFixed(2)}</Text>
             </View>
           </View>
           <View style={styles.summaryItem}>
@@ -80,7 +153,7 @@ const DashboardScreen = ({ navigation }) => {
             </View>
             <View>
               <Text style={styles.summaryLabel}>Gastos</Text>
-              <Text style={styles.summaryValue}>$1,250.00</Text>
+              <Text style={styles.summaryValue}>${monthlyTotals.expenses.toFixed(2)}</Text>
             </View>
           </View>
           <View style={styles.summaryItem}>
@@ -89,7 +162,7 @@ const DashboardScreen = ({ navigation }) => {
             </View>
             <View>
               <Text style={styles.summaryLabel}>Ahorros</Text>
-              <Text style={styles.summaryValue}>$2,250.00</Text>
+              <Text style={styles.summaryValue}>${monthlyTotals.netBalance.toFixed(2)}</Text>
             </View>
           </View>
         </View>
@@ -97,22 +170,32 @@ const DashboardScreen = ({ navigation }) => {
         {/* Expenses by Category */}
         <View style={styles.categorySection}>
           <Text style={styles.sectionTitle}>Gastos por Categoría</Text>
-          <View style={styles.categoryContainer}>
-            {categories.map((cat, index) => (
-              <View key={index} style={styles.categoryItem}>
-                <View style={styles.categoryHeader}>
-                  <View style={[styles.categoryDot, { backgroundColor: cat.color }]} />
-                  <Text style={styles.categoryName}>{cat.name}</Text>
+          <View style={styles.chartContainer}>
+            <View style={styles.pieChartWrapper}>
+              <PieChart
+                data={pieChartData}
+                width={screenWidth - 80}
+                height={220}
+                chartConfig={chartConfig}
+                accessor="population"
+                backgroundColor="transparent"
+                paddingLeft="15"
+                absolute
+                hasLegend={false}
+              />
+            </View>
+            <View style={styles.legendContainer}>
+              {expensesByCategory.map((cat, index) => (
+                <View key={index} style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: cat.color }]} />
+                  <View style={styles.legendTextContainer}>
+                    <Text style={styles.legendName}>{cat.name}</Text>
+                    <Text style={styles.legendPercentage}>{cat.percentage}%</Text>
+                  </View>
+                  <Text style={styles.legendAmount}>${cat.amount.toFixed(2)}</Text>
                 </View>
-                <View style={styles.categoryDetails}>
-                  <Text style={styles.categoryAmount}>${cat.amount}</Text>
-                  <Text style={styles.categoryPercentage}>{cat.percentage}%</Text>
-                </View>
-                <View style={[styles.categoryBar, { backgroundColor: `${cat.color}40` }]}>
-                  <View style={[styles.categoryBarFill, { backgroundColor: cat.color, width: `${cat.percentage}%` }]} />
-                </View>
-              </View>
-            ))}
+              ))}
+            </View>
           </View>
         </View>
 
@@ -120,30 +203,38 @@ const DashboardScreen = ({ navigation }) => {
         <View style={styles.transactionsSection}>
           <View style={styles.transactionsHeader}>
             <Text style={styles.sectionTitle}>Transacciones Recientes</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('Transactions')}>
               <Text style={styles.seeAllText}>Ver todo</Text>
             </TouchableOpacity>
           </View>
-          {transactions.map((transaction) => (
-            <TouchableOpacity key={transaction.id} style={styles.transactionItem}>
-              <View style={[styles.transactionIcon, { backgroundColor: `${transaction.color}20` }]}>
-                <Ionicons name={transaction.icon} size={24} color={transaction.color} />
-              </View>
-              <View style={styles.transactionDetails}>
-                <Text style={styles.transactionTitle}>{transaction.title}</Text>
-                <Text style={styles.transactionCategory}>{transaction.category}</Text>
-              </View>
-              <View style={styles.transactionAmountContainer}>
-                <Text style={[
-                  styles.transactionAmount, 
-                  transaction.amount > 0 ? styles.amountPositive : styles.amountNegative
-                ]}>
-                  {transaction.amount > 0 ? '+' : ''}${Math.abs(transaction.amount).toFixed(2)}
-                </Text>
-                <Text style={styles.transactionDate}>{transaction.date}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+          {filteredTransactions.slice(0, 5).map((transaction) => {
+            const account = accounts.find(a => a.id === transaction.accountId);
+            const icon = categoryIcons[transaction.category] || 'ellipsis-horizontal-outline';
+            const color = categoryColors[transaction.category] || '#00C2FF';
+            const date = new Date(transaction.date);
+            const formattedDate = date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+            
+            return (
+              <TouchableOpacity key={transaction.id} style={styles.transactionItem}>
+                <View style={[styles.transactionIcon, { backgroundColor: `${color}20` }]}>
+                  <Ionicons name={icon} size={24} color={color} />
+                </View>
+                <View style={styles.transactionDetails}>
+                  <Text style={styles.transactionTitle}>{transaction.title}</Text>
+                  <Text style={styles.transactionCategory}>{transaction.category} • {account?.name || 'Cuenta'}</Text>
+                </View>
+                <View style={styles.transactionAmountContainer}>
+                  <Text style={[
+                    styles.transactionAmount, 
+                    transaction.amount > 0 ? styles.amountPositive : styles.amountNegative
+                  ]}>
+                    {transaction.amount > 0 ? '+' : ''}${Math.abs(transaction.amount).toFixed(2)}
+                  </Text>
+                  <Text style={styles.transactionDate}>{formattedDate}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Bottom padding for FAB */}
@@ -151,7 +242,7 @@ const DashboardScreen = ({ navigation }) => {
       </ScrollView>
 
       {/* Floating Action Button */}
-      <TouchableOpacity style={styles.fab}>
+      <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('AddTransaction')}>
         <Ionicons name="add" size={28} color="#000" />
       </TouchableOpacity>
 
@@ -161,15 +252,15 @@ const DashboardScreen = ({ navigation }) => {
           <Ionicons name="home" size={24} color="#00C2FF" />
           <Text style={[styles.navText, { color: '#00C2FF' }]}>Inicio</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Statistics')}>
           <Ionicons name="stats-chart" size={24} color="#888" />
           <Text style={styles.navText}>Estadísticas</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Accounts')}>
           <Ionicons name="wallet" size={24} color="#888" />
           <Text style={styles.navText}>Cuentas</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Settings')}>
           <Ionicons name="person" size={24} color="#888" />
           <Text style={styles.navText}>Perfil</Text>
         </TouchableOpacity>
@@ -302,51 +393,49 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 16,
   },
-  categoryContainer: {
+  chartContainer: {
     backgroundColor: '#1a1a2e',
     borderRadius: 16,
     padding: 20,
-  },
-  categoryItem: {
-    marginBottom: 16,
-  },
-  categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
   },
-  categoryDot: {
+  pieChartWrapper: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  legendContainer: {
+    flex: 1,
+    marginLeft: 20,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  legendDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    marginRight: 12,
+    marginRight: 8,
   },
-  categoryName: {
+  legendTextContainer: {
+    flex: 1,
+  },
+  legendName: {
     fontSize: 14,
     color: '#fff',
+    marginBottom: 2,
   },
-  categoryDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  categoryAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  categoryPercentage: {
-    fontSize: 14,
+  legendPercentage: {
+    fontSize: 12,
     color: '#888',
   },
-  categoryBar: {
-    height: 8,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  categoryBarFill: {
-    height: '100%',
-    borderRadius: 4,
+  legendAmount: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#fff',
   },
   transactionsSection: {
     paddingHorizontal: 20,
