@@ -7,9 +7,16 @@ const supabaseUrl = 'https://myseeypcugioaeflmwsm.supabase.co';
 
 const supabaseAnonKey = 'sb_publishable_rAeu3qb6DvfYFHah6K5m7Q_9eHnapiS';
 
+// Custom storage adapter para evitar errores de propiedades de solo lectura
+const customStorage = {
+  getItem: (key) => AsyncStorage.getItem(key),
+  setItem: (key, value) => AsyncStorage.setItem(key, value),
+  removeItem: (key) => AsyncStorage.removeItem(key),
+};
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: AsyncStorage,
+    storage: customStorage,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,

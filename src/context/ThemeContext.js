@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getProfile, updateThemePreference } from '../services/supabaseService';
 
 const ThemeContext = createContext(null);
 
@@ -14,9 +14,10 @@ export const ThemeProvider = ({ children }) => {
 
   const loadThemePreference = async () => {
     try {
-      const savedTheme = await AsyncStorage.getItem('zenith_theme_preference');
-      if (savedTheme !== null) {
-        setIsDarkMode(savedTheme === 'dark');
+      const result = await getProfile();
+      if (result.success && result.data) {
+        const themePreference = result.data.theme_preference || 'dark';
+        setIsDarkMode(themePreference === 'dark');
       }
     } catch (error) {
       console.error('Error cargando tema:', error);
@@ -29,7 +30,7 @@ export const ThemeProvider = ({ children }) => {
     try {
       const newTheme = !isDarkMode;
       setIsDarkMode(newTheme);
-      await AsyncStorage.setItem('zenith_theme_preference', newTheme ? 'dark' : 'light');
+      await updateThemePreference(newTheme ? 'dark' : 'light');
     } catch (error) {
       console.error('Error guardando tema:', error);
     }
@@ -39,7 +40,7 @@ export const ThemeProvider = ({ children }) => {
     try {
       const isDark = theme === 'dark';
       setIsDarkMode(isDark);
-      await AsyncStorage.setItem('zenith_theme_preference', theme);
+      await updateThemePreference(theme);
     } catch (error) {
       console.error('Error estableciendo tema:', error);
     }

@@ -1,6 +1,19 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
+import {
+  getAccounts,
+  createAccount,
+  updateAccount as updateAccountSupabase,
+  deleteAccount as deleteAccountSupabase,
+  getBudgets,
+  createBudget,
+  updateBudget as updateBudgetSupabase,
+  deleteBudget as deleteBudgetSupabase,
+  getTransactions,
+  createTransaction as createTransactionSupabase,
+  updateTransaction as updateTransactionSupabase,
+  deleteTransaction as deleteTransactionSupabase,
+} from '../services/supabaseService';
 
 const DataContext = createContext(null);
 
@@ -11,56 +24,30 @@ export const DataProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState('all');
 
-  // Cargar datos iniciales o de AsyncStorage
+  // Cargar datos desde Supabase
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
     try {
-      const storedTransactions = await AsyncStorage.getItem('zenith_transactions');
-      const storedAccounts = await AsyncStorage.getItem('zenith_accounts');
-      const storedBudgets = await AsyncStorage.getItem('zenith_budgets');
+      // Cargar datos de Supabase en paralelo
+      const [transactionsResult, accountsResult, budgetsResult] = await Promise.all([
+        getTransactions(),
+        getAccounts(),
+        getBudgets(),
+      ]);
 
-      if (storedTransactions) {
-        setTransactions(JSON.parse(storedTransactions));
-      } else {
-        // Datos iniciales de prueba
-        const initialTransactions = [
-          { id: 1, title: 'Netflix', category: 'Entretenimiento', amount: -15.99, date: new Date().toISOString(), type: 'expense', accountId: 1 },
-          { id: 2, title: 'Spotify', category: 'Música', amount: -9.99, date: new Date(Date.now() - 86400000).toISOString(), type: 'expense', accountId: 1 },
-          { id: 3, title: 'Salario', category: 'Ingreso', amount: 2500.00, date: new Date(Date.now() - 172800000).toISOString(), type: 'income', accountId: 2 },
-          { id: 4, title: 'Amazon', category: 'Compras', amount: -89.50, date: new Date(Date.now() - 259200000).toISOString(), type: 'expense', accountId: 3 },
-        ];
-        setTransactions(initialTransactions);
-        await AsyncStorage.setItem('zenith_transactions', JSON.stringify(initialTransactions));
+      if (transactionsResult.success) {
+        setTransactions(transactionsResult.data);
       }
 
-      if (storedAccounts) {
-        setAccounts(JSON.parse(storedAccounts));
-      } else {
-        // Cuentas iniciales de prueba
-        const initialAccounts = [
-          { id: 1, name: 'Efectivo', type: 'cash', balance: 500, color: '#4ECDC4' },
-          { id: 2, name: 'Chase Bank', type: 'bank', balance: 5000, color: '#00C2FF' },
-          { id: 3, name: 'Capital One', type: 'credit', balance: -200, color: '#FF6B6B' },
-        ];
-        setAccounts(initialAccounts);
-        await AsyncStorage.setItem('zenith_accounts', JSON.stringify(initialAccounts));
+      if (accountsResult.success) {
+        setAccounts(accountsResult.data);
       }
 
-      if (storedBudgets) {
-        setBudgets(JSON.parse(storedBudgets));
-      } else {
-        // Presupuestos iniciales de prueba
-        const initialBudgets = [
-          { id: 1, category: 'Comida', limit: 500, spent: 450, color: '#FF6B6B' },
-          { id: 2, category: 'Transporte', limit: 300, spent: 200, color: '#4ECDC4' },
-          { id: 3, category: 'Entretenimiento', limit: 200, spent: 150, color: '#FFE66D' },
-          { id: 4, category: 'Otros', limit: 200, spent: 100, color: '#95E1D3' },
-        ];
-        setBudgets(initialBudgets);
-        await AsyncStorage.setItem('zenith_budgets', JSON.stringify(initialBudgets));
+      if (budgetsResult.success) {
+        setBudgets(budgetsResult.data);
       }
     } catch (error) {
       console.error('Error cargando datos:', error);
@@ -72,7 +59,7 @@ export const DataProvider = ({ children }) => {
   // Calcular saldo dinámico de una cuenta
   const calculateAccountBalance = (accountId) => {
     const accountTransactions = transactions.filter(t => t.accountId === accountId);
-    return accountTransactions.reduce((sum, t) => sum + t.amount, 0);
+    return accountTransactions.reduce((sum, t) => sum + (t.type === 'income' ? t.amount : -t.amount), 0);
   };
 
   // Actualizar saldos de todas las cuentas
@@ -92,22 +79,15 @@ export const DataProvider = ({ children }) => {
         throw new Error('Todos los campos son requeridos');
       }
 
-      const newTransaction = {
-        id: Date.now(),
-        ...transactionData,
-        date: transactionData.date || new Date().toISOString(),
-        type: transactionData.amount > 0 ? 'income' : 'expense',
-      };
+      const result = await createTransactionSupabase(transactionData);
 
-      const updatedTransactions = [...transactions, newTransaction];
-      setTransactions(updatedTransactions);
-      await AsyncStorage.setItem('zenith_transactions', JSON.stringify(updatedTransactions));
-      
-      // Actualizar saldo de la cuenta
-      updateAllAccountBalances();
-      await AsyncStorage.setItem('zenith_accounts', JSON.stringify(accounts));
-
-      return { success: true };
+      if (result.success) {
+        // Recargar datos para mantener sincronización
+        await loadData();
+        return { success: true };
+      } else {
+        return result;
+      }
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -115,17 +95,15 @@ export const DataProvider = ({ children }) => {
 
   const updateTransaction = async (id, updates) => {
     try {
-      const updatedTransactions = transactions.map(t => 
-        t.id === id ? { ...t, ...updates } : t
-      );
-      setTransactions(updatedTransactions);
-      await AsyncStorage.setItem('zenith_transactions', JSON.stringify(updatedTransactions));
-      
-      // Actualizar saldo de la cuenta
-      updateAllAccountBalances();
-      await AsyncStorage.setItem('zenith_accounts', JSON.stringify(accounts));
+      const result = await updateTransactionSupabase(id, updates);
 
-      return { success: true };
+      if (result.success) {
+        // Recargar datos para mantener sincronización
+        await loadData();
+        return { success: true };
+      } else {
+        return result;
+      }
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -147,15 +125,15 @@ export const DataProvider = ({ children }) => {
             style: 'destructive',
             onPress: async () => {
               try {
-                const updatedTransactions = transactions.filter(t => t.id !== id);
-                setTransactions(updatedTransactions);
-                await AsyncStorage.setItem('zenith_transactions', JSON.stringify(updatedTransactions));
-                
-                // Actualizar saldo de la cuenta
-                updateAllAccountBalances();
-                await AsyncStorage.setItem('zenith_accounts', JSON.stringify(accounts));
+                const result = await deleteTransactionSupabase(id);
 
-                resolve({ success: true });
+                if (result.success) {
+                  // Recargar datos para mantener sincronización
+                  await loadData();
+                  resolve({ success: true });
+                } else {
+                  resolve(result);
+                }
               } catch (error) {
                 resolve({ success: false, error: error.message });
               }
@@ -173,18 +151,15 @@ export const DataProvider = ({ children }) => {
         throw new Error('Nombre y tipo de cuenta son requeridos');
       }
 
-      const newAccount = {
-        id: Date.now(),
-        ...accountData,
-        balance: 0,
-        color: accountData.color || '#00C2FF',
-      };
+      const result = await createAccount(accountData);
 
-      const updatedAccounts = [...accounts, newAccount];
-      setAccounts(updatedAccounts);
-      await AsyncStorage.setItem('zenith_accounts', JSON.stringify(updatedAccounts));
-
-      return { success: true };
+      if (result.success) {
+        // Recargar datos para mantener sincronización
+        await loadData();
+        return { success: true };
+      } else {
+        return result;
+      }
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -192,13 +167,15 @@ export const DataProvider = ({ children }) => {
 
   const updateAccount = async (id, updates) => {
     try {
-      const updatedAccounts = accounts.map(a => 
-        a.id === id ? { ...a, ...updates } : a
-      );
-      setAccounts(updatedAccounts);
-      await AsyncStorage.setItem('zenith_accounts', JSON.stringify(updatedAccounts));
+      const result = await updateAccountSupabase(id, updates);
 
-      return { success: true };
+      if (result.success) {
+        // Recargar datos para mantener sincronización
+        await loadData();
+        return { success: true };
+      } else {
+        return result;
+      }
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -220,17 +197,15 @@ export const DataProvider = ({ children }) => {
             style: 'destructive',
             onPress: async () => {
               try {
-                // Eliminar transacciones de esta cuenta
-                const updatedTransactions = transactions.filter(t => t.accountId !== id);
-                setTransactions(updatedTransactions);
-                await AsyncStorage.setItem('zenith_transactions', JSON.stringify(updatedTransactions));
+                const result = await deleteAccountSupabase(id);
 
-                // Eliminar cuenta
-                const updatedAccounts = accounts.filter(a => a.id !== id);
-                setAccounts(updatedAccounts);
-                await AsyncStorage.setItem('zenith_accounts', JSON.stringify(updatedAccounts));
-
-                resolve({ success: true });
+                if (result.success) {
+                  // Recargar datos para mantener sincronización
+                  await loadData();
+                  resolve({ success: true });
+                } else {
+                  resolve(result);
+                }
               } catch (error) {
                 resolve({ success: false, error: error.message });
               }
@@ -248,18 +223,15 @@ export const DataProvider = ({ children }) => {
         throw new Error('Categoría y límite son requeridos');
       }
 
-      const newBudget = {
-        id: Date.now(),
-        ...budgetData,
-        spent: 0,
-        color: budgetData.color || '#00C2FF',
-      };
+      const result = await createBudget(budgetData);
 
-      const updatedBudgets = [...budgets, newBudget];
-      setBudgets(updatedBudgets);
-      await AsyncStorage.setItem('zenith_budgets', JSON.stringify(updatedBudgets));
-
-      return { success: true };
+      if (result.success) {
+        // Recargar datos para mantener sincronización
+        await loadData();
+        return { success: true };
+      } else {
+        return result;
+      }
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -267,13 +239,15 @@ export const DataProvider = ({ children }) => {
 
   const updateBudget = async (id, updates) => {
     try {
-      const updatedBudgets = budgets.map(b => 
-        b.id === id ? { ...b, ...updates } : b
-      );
-      setBudgets(updatedBudgets);
-      await AsyncStorage.setItem('zenith_budgets', JSON.stringify(updatedBudgets));
+      const result = await updateBudgetSupabase(id, updates);
 
-      return { success: true };
+      if (result.success) {
+        // Recargar datos para mantener sincronización
+        await loadData();
+        return { success: true };
+      } else {
+        return result;
+      }
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -295,11 +269,15 @@ export const DataProvider = ({ children }) => {
             style: 'destructive',
             onPress: async () => {
               try {
-                const updatedBudgets = budgets.filter(b => b.id !== id);
-                setBudgets(updatedBudgets);
-                await AsyncStorage.setItem('zenith_budgets', JSON.stringify(updatedBudgets));
+                const result = await deleteBudgetSupabase(id);
 
-                resolve({ success: true });
+                if (result.success) {
+                  // Recargar datos para mantener sincronización
+                  await loadData();
+                  resolve({ success: true });
+                } else {
+                  resolve(result);
+                }
               } catch (error) {
                 resolve({ success: false, error: error.message });
               }
@@ -310,7 +288,7 @@ export const DataProvider = ({ children }) => {
     });
   };
 
-  // Actualizar presupuesto gastado basado en transacciones
+  // Actualizar presupuesto gastado basado en transacciones (calculado dinámicamente)
   const updateBudgetSpent = () => {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
@@ -331,7 +309,6 @@ export const DataProvider = ({ children }) => {
     });
 
     setBudgets(updatedBudgets);
-    AsyncStorage.setItem('zenith_budgets', JSON.stringify(updatedBudgets));
   };
 
   // Calcular totales del mes actual
