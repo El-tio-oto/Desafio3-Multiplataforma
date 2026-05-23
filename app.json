@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Zenith Finance",
+    "slug": "zenith-finance",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.zenith.finance"
+    },
+    "android": {
+      "package": "com.zenith.finance"
+    },
+    "sdkVersion": "54.0.0"
+  }
+}
