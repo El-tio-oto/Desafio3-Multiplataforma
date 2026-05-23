@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Dimensions } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { PieChart } from 'react-native-chart-kit';
 
@@ -17,6 +18,7 @@ const DashboardScreen = ({ navigation }) => {
     selectedFilter,
     setSelectedFilter 
   } = useData();
+  const { isDarkMode, colors } = useTheme();
   const screenWidth = Dimensions.get('window').width;
 
   const monthlyTotals = getMonthlyTotals();
@@ -67,29 +69,29 @@ const DashboardScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.headerTitle}>Zenith Ledger</Text>
-            <Text style={styles.welcomeText}>Bienvenido, {user?.fullName || user?.email?.split('@')[0] || 'Usuario'}!</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Zenith Ledger</Text>
+            <Text style={[styles.welcomeText, { color: colors.textSecondary }]}>Bienvenido, {user?.fullName || user?.email?.split('@')[0] || 'Usuario'}!</Text>
           </View>
           <TouchableOpacity 
-            style={styles.settingsButton}
+            style={[styles.settingsButton, { backgroundColor: colors.surface }]}
             onPress={() => navigation.navigate('Settings')}
           >
-            <Ionicons name="settings-outline" size={24} color="#00C2FF" />
+            <Ionicons name="settings-outline" size={24} color={isDarkMode ? '#00C2FF' : '#0066cc'} />
           </TouchableOpacity>
         </View>
 
         {/* Balance Card */}
-        <View style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>Balance Total Actual</Text>
-          <Text style={styles.balanceAmount}>${monthlyTotals.netBalance.toFixed(2)}</Text>
+        <View style={[styles.balanceCard, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.balanceLabel, { color: colors.textSecondary }]}>Balance Total Actual</Text>
+          <Text style={[styles.balanceAmount, { color: colors.text }]}>${monthlyTotals.netBalance.toFixed(2)}</Text>
           <View style={styles.balanceChange}>
-            <Ionicons name={monthlyTotals.netBalance >= 0 ? 'trending-up' : 'trending-down'} size={16} color={monthlyTotals.netBalance >= 0 ? '#00C2FF' : '#ff4444'} />
-            <Text style={[styles.balanceChangeText, { color: monthlyTotals.netBalance >= 0 ? '#00C2FF' : '#ff4444' }]}>
+            <Ionicons name={monthlyTotals.netBalance >= 0 ? 'trending-up' : 'trending-down'} size={16} color={monthlyTotals.netBalance >= 0 ? colors.success : colors.error} />
+            <Text style={[styles.balanceChangeText, { color: monthlyTotals.netBalance >= 0 ? colors.success : colors.error }]}>
               {monthlyTotals.netBalance >= 0 ? '+' : ''}{((monthlyTotals.netBalance / (monthlyTotals.income || 1)) * 100).toFixed(1)}% este mes
             </Text>
           </View>
@@ -99,36 +101,36 @@ const DashboardScreen = ({ navigation }) => {
         <View style={styles.filterContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <TouchableOpacity 
-              style={[styles.filterChip, selectedFilter === 'all' && styles.filterChipActive]}
+              style={[styles.filterChip, { backgroundColor: colors.surface }, selectedFilter === 'all' && styles.filterChipActive]}
               onPress={() => setSelectedFilter('all')}
             >
-              <Text style={[styles.filterText, selectedFilter === 'all' && styles.filterTextActive]}>
+              <Text style={[styles.filterText, { color: colors.textSecondary }, selectedFilter === 'all' && styles.filterTextActive]}>
                 Todas las Cuentas
               </Text>
             </TouchableOpacity>
             <TouchableOpacity 
-              style={[styles.filterChip, selectedFilter === 'income' && styles.filterChipActive]}
+              style={[styles.filterChip, { backgroundColor: colors.surface }, selectedFilter === 'income' && styles.filterChipActive]}
               onPress={() => setSelectedFilter('income')}
             >
-              <Text style={[styles.filterText, selectedFilter === 'income' && styles.filterTextActive]}>
+              <Text style={[styles.filterText, { color: colors.textSecondary }, selectedFilter === 'income' && styles.filterTextActive]}>
                 Ingresos
               </Text>
             </TouchableOpacity>
             <TouchableOpacity 
-              style={[styles.filterChip, selectedFilter === 'expense' && styles.filterChipActive]}
+              style={[styles.filterChip, { backgroundColor: colors.surface }, selectedFilter === 'expense' && styles.filterChipActive]}
               onPress={() => setSelectedFilter('expense')}
             >
-              <Text style={[styles.filterText, selectedFilter === 'expense' && styles.filterTextActive]}>
+              <Text style={[styles.filterText, { color: colors.textSecondary }, selectedFilter === 'expense' && styles.filterTextActive]}>
                 Gastos
               </Text>
             </TouchableOpacity>
             {accounts.map((account) => (
               <TouchableOpacity 
                 key={account.id}
-                style={[styles.filterChip, selectedFilter === account.name && styles.filterChipActive]}
+                style={[styles.filterChip, { backgroundColor: colors.surface }, selectedFilter === account.name && styles.filterChipActive]}
                 onPress={() => setSelectedFilter(account.name)}
               >
-                <Text style={[styles.filterText, selectedFilter === account.name && styles.filterTextActive]}>
+                <Text style={[styles.filterText, { color: colors.textSecondary }, selectedFilter === account.name && styles.filterTextActive]}>
                   {account.name}
                 </Text>
               </TouchableOpacity>
@@ -138,44 +140,44 @@ const DashboardScreen = ({ navigation }) => {
 
         {/* Monthly Summary */}
         <View style={styles.summaryContainer}>
-          <View style={styles.summaryItem}>
-            <View style={[styles.summaryIcon, { backgroundColor: 'rgba(0, 194, 255, 0.2)' }]}>
-              <Ionicons name="arrow-down-outline" size={20} color="#00C2FF" />
+          <View style={[styles.summaryItem, { backgroundColor: colors.surface }]}>
+            <View style={[styles.summaryIcon, { backgroundColor: isDarkMode ? 'rgba(0, 194, 255, 0.2)' : 'rgba(0, 102, 204, 0.1)' }]}>
+              <Ionicons name="arrow-down-outline" size={20} color={isDarkMode ? '#00C2FF' : '#0066cc'} />
             </View>
             <View>
-              <Text style={styles.summaryLabel}>Ingresos</Text>
-              <Text style={styles.summaryValue}>${monthlyTotals.income.toFixed(2)}</Text>
+              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Ingresos</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>${monthlyTotals.income.toFixed(2)}</Text>
             </View>
           </View>
-          <View style={styles.summaryItem}>
-            <View style={[styles.summaryIcon, { backgroundColor: 'rgba(255, 68, 68, 0.2)' }]}>
-              <Ionicons name="arrow-up-outline" size={20} color="#ff4444" />
+          <View style={[styles.summaryItem, { backgroundColor: colors.surface }]}>
+            <View style={[styles.summaryIcon, { backgroundColor: isDarkMode ? 'rgba(255, 68, 68, 0.2)' : 'rgba(204, 0, 0, 0.1)' }]}>
+              <Ionicons name="arrow-up-outline" size={20} color={isDarkMode ? '#ff4444' : '#cc0000'} />
             </View>
             <View>
-              <Text style={styles.summaryLabel}>Gastos</Text>
-              <Text style={styles.summaryValue}>${monthlyTotals.expenses.toFixed(2)}</Text>
+              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Gastos</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>${monthlyTotals.expenses.toFixed(2)}</Text>
             </View>
           </View>
-          <View style={styles.summaryItem}>
-            <View style={[styles.summaryIcon, { backgroundColor: 'rgba(78, 205, 196, 0.2)' }]}>
-              <Ionicons name="piggy-bank-outline" size={20} color="#4ECDC4" />
+          <View style={[styles.summaryItem, { backgroundColor: colors.surface }]}>
+            <View style={[styles.summaryIcon, { backgroundColor: isDarkMode ? 'rgba(78, 205, 196, 0.2)' : 'rgba(0, 170, 102, 0.1)' }]}>
+              <Ionicons name="piggy-bank-outline" size={20} color={isDarkMode ? '#4ECDC4' : '#00aa66'} />
             </View>
             <View>
-              <Text style={styles.summaryLabel}>Ahorros</Text>
-              <Text style={styles.summaryValue}>${monthlyTotals.netBalance.toFixed(2)}</Text>
+              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Ahorros</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>${monthlyTotals.netBalance.toFixed(2)}</Text>
             </View>
           </View>
         </View>
 
         {/* Expenses by Category */}
         <View style={styles.categorySection}>
-          <Text style={styles.sectionTitle}>Gastos por Categoría</Text>
-          <View style={styles.chartContainer}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Gastos por Categoría</Text>
+          <View style={[styles.chartContainer, { backgroundColor: colors.surface }]}>
             <View style={styles.pieChartWrapper}>
               <PieChart
                 data={pieChartData}
-                width={screenWidth - 80}
-                height={220}
+                width={screenWidth - 40}
+                height={180}
                 chartConfig={chartConfig}
                 accessor="population"
                 backgroundColor="transparent"
@@ -189,10 +191,10 @@ const DashboardScreen = ({ navigation }) => {
                 <View key={index} style={styles.legendItem}>
                   <View style={[styles.legendDot, { backgroundColor: cat.color }]} />
                   <View style={styles.legendTextContainer}>
-                    <Text style={styles.legendName}>{cat.name}</Text>
-                    <Text style={styles.legendPercentage}>{cat.percentage}%</Text>
+                    <Text style={[styles.legendName, { color: colors.text }]}>{cat.name}</Text>
+                    <Text style={[styles.legendPercentage, { color: colors.textSecondary }]}>{cat.percentage}%</Text>
                   </View>
-                  <Text style={styles.legendAmount}>${cat.amount.toFixed(2)}</Text>
+                  <Text style={[styles.legendAmount, { color: colors.text }]}>${cat.amount.toFixed(2)}</Text>
                 </View>
               ))}
             </View>
@@ -202,35 +204,36 @@ const DashboardScreen = ({ navigation }) => {
         {/* Recent Transactions */}
         <View style={styles.transactionsSection}>
           <View style={styles.transactionsHeader}>
-            <Text style={styles.sectionTitle}>Transacciones Recientes</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Transacciones Recientes</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Transactions')}>
-              <Text style={styles.seeAllText}>Ver todo</Text>
+              <Text style={[styles.seeAllText, { color: isDarkMode ? '#00C2FF' : '#0066cc' }]}>Ver todo</Text>
             </TouchableOpacity>
           </View>
           {filteredTransactions.slice(0, 5).map((transaction) => {
             const account = accounts.find(a => a.id === transaction.accountId);
             const icon = categoryIcons[transaction.category] || 'ellipsis-horizontal-outline';
-            const color = categoryColors[transaction.category] || '#00C2FF';
+            const color = categoryColors[transaction.category] || (isDarkMode ? '#00C2FF' : '#0066cc');
             const date = new Date(transaction.date);
             const formattedDate = date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
             
             return (
-              <TouchableOpacity key={transaction.id} style={styles.transactionItem}>
+              <TouchableOpacity key={transaction.id} style={[styles.transactionItem, { backgroundColor: colors.surface }]}>
                 <View style={[styles.transactionIcon, { backgroundColor: `${color}20` }]}>
                   <Ionicons name={icon} size={24} color={color} />
                 </View>
                 <View style={styles.transactionDetails}>
-                  <Text style={styles.transactionTitle}>{transaction.title}</Text>
-                  <Text style={styles.transactionCategory}>{transaction.category} • {account?.name || 'Cuenta'}</Text>
+                  <Text style={[styles.transactionTitle, { color: colors.text }]}>{transaction.title}</Text>
+                  <Text style={[styles.transactionCategory, { color: colors.textSecondary }]}>{transaction.category} • {account?.name || 'Cuenta'}</Text>
                 </View>
                 <View style={styles.transactionAmountContainer}>
                   <Text style={[
                     styles.transactionAmount, 
-                    transaction.amount > 0 ? styles.amountPositive : styles.amountNegative
+                    transaction.amount > 0 ? styles.amountPositive : styles.amountNegative,
+                    { color: transaction.amount > 0 ? colors.success : colors.error }
                   ]}>
                     {transaction.amount > 0 ? '+' : ''}${Math.abs(transaction.amount).toFixed(2)}
                   </Text>
-                  <Text style={styles.transactionDate}>{formattedDate}</Text>
+                  <Text style={[styles.transactionDate, { color: colors.textTertiary }]}>{formattedDate}</Text>
                 </View>
               </TouchableOpacity>
             );
@@ -242,27 +245,27 @@ const DashboardScreen = ({ navigation }) => {
       </ScrollView>
 
       {/* Floating Action Button */}
-      <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('AddTransaction')}>
+      <TouchableOpacity style={[styles.fab, { backgroundColor: isDarkMode ? '#00C2FF' : '#0066cc' }]} onPress={() => navigation.navigate('AddTransaction')}>
         <Ionicons name="add" size={28} color="#000" />
       </TouchableOpacity>
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
+      <View style={[styles.bottomNav, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
         <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="home" size={24} color="#00C2FF" />
-          <Text style={[styles.navText, { color: '#00C2FF' }]}>Inicio</Text>
+          <Ionicons name="home" size={24} color={isDarkMode ? '#00C2FF' : '#0066cc'} />
+          <Text style={[styles.navText, { color: isDarkMode ? '#00C2FF' : '#0066cc' }]}>Inicio</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Statistics')}>
-          <Ionicons name="stats-chart" size={24} color="#888" />
-          <Text style={styles.navText}>Estadísticas</Text>
+          <Ionicons name="stats-chart" size={24} color={colors.textTertiary} />
+          <Text style={[styles.navText, { color: colors.textTertiary }]}>Estadísticas</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Accounts')}>
-          <Ionicons name="wallet" size={24} color="#888" />
-          <Text style={styles.navText}>Cuentas</Text>
+          <Ionicons name="wallet" size={24} color={colors.textTertiary} />
+          <Text style={[styles.navText, { color: colors.textTertiary }]}>Cuentas</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Settings')}>
-          <Ionicons name="person" size={24} color="#888" />
-          <Text style={styles.navText}>Perfil</Text>
+          <Ionicons name="person" size={24} color={colors.textTertiary} />
+          <Text style={[styles.navText, { color: colors.textTertiary }]}>Perfil</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

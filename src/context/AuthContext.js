@@ -107,8 +107,16 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
+      // Limpiar sesión de autenticación
       await AsyncStorage.removeItem('zenith_user');
       await AsyncStorage.removeItem('zenith_token');
+      
+      // Limpiar datos de la aplicación
+      await AsyncStorage.removeItem('zenith_transactions');
+      await AsyncStorage.removeItem('zenith_accounts');
+      await AsyncStorage.removeItem('zenith_budgets');
+      
+      // Resetear estado
       setUser(null);
       setToken(null);
     } catch (error) {

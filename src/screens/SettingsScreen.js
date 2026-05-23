@@ -1,10 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Alert, Switch } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 
 const SettingsScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
+  const { isDarkMode, toggleTheme, colors } = useTheme();
 
   const handleLogout = () => {
     Alert.alert(
@@ -51,7 +53,9 @@ const SettingsScreen = ({ navigation }) => {
       icon: 'moon-outline',
       title: 'Tema',
       subtitle: 'Modo oscuro/claro',
-      onPress: () => console.log('Tema'),
+      isSwitch: true,
+      switchValue: isDarkMode,
+      onSwitchChange: toggleTheme,
     },
     {
       id: 5,
@@ -84,54 +88,76 @@ const SettingsScreen = ({ navigation }) => {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity 
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: colors.surface }]}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Ajustes de Cuenta</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Ajustes de Cuenta</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* User Info Card */}
-        <View style={styles.userCard}>
-          <View style={styles.userAvatar}>
-            <Ionicons name="person" size={40} color="#00C2FF" />
+        <View style={[styles.userCard, { backgroundColor: colors.surface }]}>
+          <View style={[styles.userAvatar, { backgroundColor: isDarkMode ? 'rgba(0, 194, 255, 0.2)' : 'rgba(0, 102, 204, 0.1)' }]}>
+            <Ionicons name="person" size={40} color={isDarkMode ? '#00C2FF' : '#0066cc'} />
           </View>
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{user?.fullName || user?.email?.split('@')[0] || 'Usuario'}</Text>
-            <Text style={styles.userEmail}>{user?.email || 'usuario@email.com'}</Text>
+            <Text style={[styles.userName, { color: colors.text }]}>{user?.fullName || user?.email?.split('@')[0] || 'Usuario'}</Text>
+            <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{user?.email || 'usuario@email.com'}</Text>
           </View>
         </View>
 
         {/* Settings Options */}
         <View style={styles.settingsSection}>
           {settingsOptions.map((option) => (
-            <TouchableOpacity 
-              key={option.id} 
-              style={styles.settingItem}
-              onPress={option.onPress}
-            >
-              <View style={styles.settingIconContainer}>
-                <Ionicons name={option.icon} size={24} color="#00C2FF" />
+            option.isSwitch ? (
+              <View key={option.id} style={[styles.settingItem, { backgroundColor: colors.surface }]}>
+                <View style={[styles.settingIconContainer, { backgroundColor: isDarkMode ? 'rgba(0, 194, 255, 0.1)' : 'rgba(0, 102, 204, 0.1)' }]}>
+                  <Ionicons name={option.icon} size={24} color={isDarkMode ? '#00C2FF' : '#0066cc'} />
+                </View>
+                <View style={styles.settingTextContainer}>
+                  <Text style={[styles.settingTitle, { color: colors.text }]}>{option.title}</Text>
+                  <Text style={[styles.settingSubtitle, { color: colors.textSecondary }]}>{option.subtitle}</Text>
+                </View>
+                <Switch
+                  value={option.switchValue}
+                  onValueChange={option.onSwitchChange}
+                  trackColor={{ false: '#767577', true: isDarkMode ? '#00C2FF' : '#0066cc' }}
+                  thumbColor={option.switchValue ? '#fff' : '#f4f3f4'}
+                  ios_backgroundColor="#3e3e3e"
+                />
               </View>
-              <View style={styles.settingTextContainer}>
-                <Text style={styles.settingTitle}>{option.title}</Text>
-                <Text style={styles.settingSubtitle}>{option.subtitle}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#888" />
-            </TouchableOpacity>
+            ) : (
+              <TouchableOpacity 
+                key={option.id} 
+                style={[styles.settingItem, { backgroundColor: colors.surface }]}
+                onPress={option.onPress}
+              >
+                <View style={[styles.settingIconContainer, { backgroundColor: isDarkMode ? 'rgba(0, 194, 255, 0.1)' : 'rgba(0, 102, 204, 0.1)' }]}>
+                  <Ionicons name={option.icon} size={24} color={isDarkMode ? '#00C2FF' : '#0066cc'} />
+                </View>
+                <View style={styles.settingTextContainer}>
+                  <Text style={[styles.settingTitle, { color: colors.text }]}>{option.title}</Text>
+                  <Text style={[styles.settingSubtitle, { color: colors.textSecondary }]}>{option.subtitle}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+              </TouchableOpacity>
+            )
           ))}
         </View>
 
         {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color="#ff4444" />
-          <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
+        <TouchableOpacity 
+          style={[styles.logoutButton, { backgroundColor: colors.surface, borderColor: colors.error }]} 
+          onPress={handleLogout}
+        >
+          <Ionicons name="log-out-outline" size={24} color={colors.error} />
+          <Text style={[styles.logoutButtonText, { color: colors.error }]}>Cerrar Sesión</Text>
         </TouchableOpacity>
 
         <View style={styles.bottomPadding} />
