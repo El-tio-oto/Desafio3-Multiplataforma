@@ -1,62 +1,62 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../config/supabaseClient';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
+  const [session, setSession] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Cargar sesión persistente al iniciar
+  // Escuchar cambios en el estado de autenticación de Supabase
   useEffect(() => {
-    loadSession();
-  }, []);
-
-  const loadSession = async () => {
-    try {
-      const storedUser = await AsyncStorage.getItem('zenith_user');
-      const storedToken = await AsyncStorage.getItem('zenith_token');
-      
-      if (storedUser && storedToken) {
-        setUser(JSON.parse(storedUser));
-        setToken(storedToken);
+    // Obtener sesión inicial
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email,
+          fullName: session.user.user_metadata?.full_name || 'Usuario Zenith',
+        });
+      } else {
+        setUser(null);
       }
-    } catch (error) {
-      console.error('Error cargando sesión:', error);
-    } finally {
       setIsLoading(false);
-    }
-  };
+    });
+
+    // Suscribirse a cambios futuros
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email,
+          fullName: session.user.user_metadata?.full_name || 'Usuario Zenith',
+        });
+      } else {
+        setUser(null);
+      }
+      setIsLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const login = async (email, password) => {
     try {
-      // Simulación de autenticación
-      // En producción, aquí iría la llamada a tu API
       if (!email || !password) {
         throw new Error('Por favor completa todos los campos');
       }
 
-      // Validación básica de email
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        throw new Error('Email inválido');
-      }
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-      // Simulación de login exitoso
-      const mockUser = {
-        id: '1',
-        email: email,
-        fullName: 'Usuario Zenith',
-      };
-
-      const mockToken = 'mock_jwt_token_' + Date.now();
-
-      await AsyncStorage.setItem('zenith_user', JSON.stringify(mockUser));
-      await AsyncStorage.setItem('zenith_token', mockToken);
-
-      setUser(mockUser);
-      setToken(mockToken);
+      if (error) throw error;
 
       return { success: true };
     } catch (error) {
@@ -66,38 +66,25 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (fullName, email, password, confirmPassword) => {
     try {
-      // Validaciones
       if (!fullName || !email || !password || !confirmPassword) {
         throw new Error('Por favor completa todos los campos');
-      }
-
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        throw new Error('Email inválido');
-      }
-
-      if (password.length < 6) {
-        throw new Error('La contraseña debe tener al menos 6 caracteres');
       }
 
       if (password !== confirmPassword) {
         throw new Error('Las contraseñas no coinciden');
       }
 
-      // Simulación de registro exitoso
-      const mockUser = {
-        id: '1',
-        email: email,
-        fullName: fullName,
-      };
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
+        },
+      });
 
-      const mockToken = 'mock_jwt_token_' + Date.now();
-
-      await AsyncStorage.setItem('zenith_user', JSON.stringify(mockUser));
-      await AsyncStorage.setItem('zenith_token', mockToken);
-
-      setUser(mockUser);
-      setToken(mockToken);
+      if (error) throw error;
 
       return { success: true };
     } catch (error) {
@@ -107,10 +94,8 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem('zenith_user');
-      await AsyncStorage.removeItem('zenith_token');
-      setUser(null);
-      setToken(null);
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
     } catch (error) {
       console.error('Error cerrando sesión:', error);
     }
@@ -118,7 +103,8 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
-    token,
+    session,
+    token: session?.access_token || null,
     isLoading,
     login,
     register,
