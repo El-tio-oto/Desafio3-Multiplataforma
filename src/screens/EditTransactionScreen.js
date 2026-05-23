@@ -4,16 +4,17 @@ import { useData } from '../context/DataContext';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 
-const AddTransactionScreen = ({ navigation }) => {
-  const { accounts, addTransaction } = useData();
+const EditTransactionScreen = ({ route, navigation }) => {
+  const { transaction } = route.params;
+  const { accounts, updateTransaction } = useData();
   const [formData, setFormData] = useState({
-    title: '',
-    amount: '',
-    category: '',
-    accountId: accounts[0]?.id?.toString() || '',
-    type: 'expense',
-    date: new Date().toISOString().split('T')[0],
-    receiptUri: null,
+    title: transaction.title || '',
+    amount: transaction.amount ? Math.abs(transaction.amount).toString() : '',
+    category: transaction.category || 'Comida',
+    accountId: transaction.accountId || accounts[0]?.id?.toString() || '',
+    type: transaction.type || 'expense',
+    date: transaction.date ? new Date(transaction.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    receiptUri: transaction.receiptUri || null,
   });
 
   const categories = ['Comida', 'Transporte', 'Entretenimiento', 'Música', 'Compras', 'Otros'];
@@ -68,7 +69,7 @@ const AddTransactionScreen = ({ navigation }) => {
 
       const finalAmount = formData.type === 'expense' ? -amount : amount;
 
-      const result = await addTransaction({
+      const result = await updateTransaction(transaction.id, {
         title: formData.title,
         amount: finalAmount,
         category: formData.category,
@@ -78,7 +79,7 @@ const AddTransactionScreen = ({ navigation }) => {
       });
 
       if (result.success) {
-        Alert.alert('Éxito', 'Transacción agregada correctamente', [
+        Alert.alert('Éxito', 'Transacción actualizada correctamente', [
           {
             text: 'OK',
             onPress: () => navigation.goBack(),
@@ -101,7 +102,7 @@ const AddTransactionScreen = ({ navigation }) => {
         >
           <Ionicons name="close" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Nueva Transacción</Text>
+        <Text style={styles.headerTitle}>Editar Transacción</Text>
         <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
           <Text style={styles.saveButtonText}>Guardar</Text>
         </TouchableOpacity>
@@ -469,4 +470,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AddTransactionScreen;
+export default EditTransactionScreen;

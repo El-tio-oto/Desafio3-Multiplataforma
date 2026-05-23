@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { getProfile, updateThemePreference } from '../services/supabaseService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ThemeContext = createContext(null);
 
@@ -14,10 +15,21 @@ export const ThemeProvider = ({ children }) => {
 
   const loadThemePreference = async () => {
     try {
+      // 1. Intentar cargar de AsyncStorage primero (muy rápido)
+      const localTheme = await AsyncStorage.getItem('@theme_preference');
+      if (localTheme) {
+        setIsDarkMode(localTheme === 'dark');
+      }
+
+      // 2. Sincronizar con el perfil de Supabase en segundo plano
       const result = await getProfile();
       if (result.success && result.data) {
         const themePreference = result.data.theme_preference || 'dark';
-        setIsDarkMode(themePreference === 'dark');
+        // Solo actualizar si es diferente al local (o si no había local)
+        if (!localTheme || localTheme !== themePreference) {
+          setIsDarkMode(themePreference === 'dark');
+          await AsyncStorage.setItem('@theme_preference', themePreference);
+        }
       }
     } catch (error) {
       console.error('Error cargando tema:', error);
@@ -29,8 +41,12 @@ export const ThemeProvider = ({ children }) => {
   const toggleTheme = async () => {
     try {
       const newTheme = !isDarkMode;
+      const themeString = newTheme ? 'dark' : 'light';
       setIsDarkMode(newTheme);
-      await updateThemePreference(newTheme ? 'dark' : 'light');
+      // Guardar localmente
+      await AsyncStorage.setItem('@theme_preference', themeString);
+      // Guardar en la nube
+      await updateThemePreference(themeString);
     } catch (error) {
       console.error('Error guardando tema:', error);
     }
@@ -40,6 +56,9 @@ export const ThemeProvider = ({ children }) => {
     try {
       const isDark = theme === 'dark';
       setIsDarkMode(isDark);
+      // Guardar localmente
+      await AsyncStorage.setItem('@theme_preference', theme);
+      // Guardar en la nube
       await updateThemePreference(theme);
     } catch (error) {
       console.error('Error estableciendo tema:', error);

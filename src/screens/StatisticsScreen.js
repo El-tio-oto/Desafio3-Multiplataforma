@@ -3,6 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Dim
 import { useData } from '../context/DataContext';
 import { Ionicons } from '@expo/vector-icons';
 import { PieChart, LineChart, BarChart } from 'react-native-chart-kit';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 
 const StatisticsScreen = ({ navigation }) => {
   const { transactions, accounts, budgets, getMonthlyTotals, getExpensesByCategory } = useData();
@@ -112,6 +115,67 @@ const StatisticsScreen = ({ navigation }) => {
 
   const topCategories = getTopSpendingCategories();
 
+  const exportPDF = async () => {
+    try {
+      const htmlContent = `
+        <html>
+          <head>
+            <style>
+              body { font-family: 'Helvetica', sans-serif; padding: 20px; color: #333; }
+              h1 { color: #00C2FF; text-align: center; border-bottom: 2px solid #00C2FF; padding-bottom: 10px; }
+              .summary { display: flex; justify-content: space-between; margin-bottom: 30px; background: #f5f5f5; padding: 15px; border-radius: 10px; }
+              .summary-box { text-align: center; }
+              h2 { color: #555; }
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+              th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+              th { background-color: #00C2FF; color: white; }
+              tr:nth-child(even) { background-color: #f9f9f9; }
+            </style>
+          </head>
+          <body>
+            <h1>Reporte Mensual - Zenith Ledger</h1>
+            <div class="summary">
+              <div class="summary-box"><h3>Ingresos</h3><p>$${monthlyTotals.income.toFixed(2)}</p></div>
+              <div class="summary-box"><h3>Gastos</h3><p>$${monthlyTotals.expenses.toFixed(2)}</p></div>
+              <div class="summary-box"><h3>Balance Neto</h3><p>$${monthlyTotals.netBalance.toFixed(2)}</p></div>
+            </div>
+            <h2>Resumen por Categorías</h2>
+            <table>
+              <tr><th>Categoría</th><th>Gasto Total</th><th>Porcentaje</th></tr>
+              ${expensesByCategory.map(cat => `
+                <tr>
+                  <td>${cat.name}</td>
+                  <td>$${cat.amount.toFixed(2)}</td>
+                  <td>${cat.percentage}%</td>
+                </tr>
+              `).join('')}
+            </table>
+            <p style="text-align: center; margin-top: 40px; font-size: 12px; color: #888;">Generado por Zenith Ledger App</p>
+          </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+    } catch (error) {
+      console.error('Error exportando PDF:', error);
+    }
+  };
+
+  const exportCSV = async () => {
+    try {
+      const header = "Categoria,Monto,Porcentaje\n";
+      const rows = expensesByCategory.map(cat => `${cat.name},${cat.amount.toFixed(2)},${cat.percentage}%`).join("\n");
+      const csvString = header + rows;
+      
+      const fileUri = FileSystem.documentDirectory + "reporte_zenith.csv";
+      await FileSystem.writeAsStringAsync(fileUri, csvString, { encoding: FileSystem.EncodingType.UTF8 });
+      await Sharing.shareAsync(fileUri, { mimeType: 'text/csv' });
+    } catch (error) {
+      console.error('Error exportando CSV:', error);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -122,7 +186,14 @@ const StatisticsScreen = ({ navigation }) => {
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Estadísticas</Text>
-        <View style={{ width: 40 }} />
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.exportActionBtn} onPress={exportCSV}>
+            <Ionicons name="document-text-outline" size={22} color="#4ECDC4" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.exportActionBtn} onPress={exportPDF}>
+            <Ionicons name="download-outline" size={22} color="#00C2FF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -200,12 +271,13 @@ const StatisticsScreen = ({ navigation }) => {
               <>
                 <PieChart
                   data={pieChartData}
-                  width={screenWidth - 80}
-                  height={220}
+                  width={(screenWidth - 80) / 2}
+                  height={180}
                   chartConfig={chartConfig}
                   accessor="population"
                   backgroundColor="transparent"
-                  paddingLeft="15"
+                  paddingLeft="0"
+                  center={[((screenWidth - 80) / 2) / 4, 0]}
                   absolute
                   hasLegend={false}
                 />
@@ -245,8 +317,8 @@ const StatisticsScreen = ({ navigation }) => {
               </View>
             ))
           ) : (
-            <View style={stylesEmptyContainer}>
-              <Text style={styles.emptyText}>Sin datos</Text>
+            <View style={styles.emptyChart}>
+              <Text style={styles.emptyChartText}>Sin datos</Text>
             </View>
           )}
         </View>
@@ -334,6 +406,18 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  exportActionBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#1a1a2e',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollView: {
     flex: 1,

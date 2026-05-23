@@ -1,6 +1,10 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '../config/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const AuthContext = createContext(null);
 
@@ -93,6 +97,57 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const loginWithGoogle = async () => {
+    try {
+      const redirectUrl = makeRedirectUri();
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.url) {
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+        if (result.type === 'success') {
+          // Si es exitoso, Supabase sincronizará la sesión (o se puede extraer del URL)
+          return { success: true };
+        }
+      }
+      return { success: false, error: 'Proceso cancelado' };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
+  const loginWithFacebook = async () => {
+    try {
+      const redirectUrl = makeRedirectUri();
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'facebook',
+        options: {
+          redirectTo: redirectUrl,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.url) {
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+        if (result.type === 'success') {
+          return { success: true };
+        }
+      }
+      return { success: false, error: 'Proceso cancelado' };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
   const logout = async () => {
     try {
       // Logout de Supabase
@@ -114,6 +169,8 @@ export const AuthProvider = ({ children }) => {
     token: session?.access_token || null,
     isLoading,
     login,
+    loginWithGoogle,
+    loginWithFacebook,
     register,
     logout,
     isAuthenticated: !!user,

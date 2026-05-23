@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Dimensions, Platform, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { useTheme } from '../context/ThemeContext';
@@ -16,14 +17,38 @@ const DashboardScreen = ({ navigation }) => {
     getFilteredTransactions, 
     getExpensesByCategory,
     selectedFilter,
-    setSelectedFilter 
+    setSelectedFilter,
+    deleteTransaction
   } = useData();
   const { isDarkMode, colors } = useTheme();
   const screenWidth = Dimensions.get('window').width;
+  const insets = useSafeAreaInsets();
 
   const monthlyTotals = getMonthlyTotals();
   const filteredTransactions = getFilteredTransactions();
   const expensesByCategory = getExpensesByCategory();
+
+  const handleTransactionLongPress = (transaction) => {
+    Alert.alert(
+      'Opciones',
+      `¿Qué deseas hacer con "${transaction.title}"?`,
+      [
+        {
+          text: 'Editar',
+          onPress: () => navigation.navigate('EditTransaction', { transaction }),
+        },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => deleteTransaction(transaction.id),
+        },
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
 
   const categoryIcons = {
     'Comida': 'restaurant-outline',
@@ -160,7 +185,7 @@ const DashboardScreen = ({ navigation }) => {
           </View>
           <View style={[styles.summaryItem, { backgroundColor: colors.surface }]}>
             <View style={[styles.summaryIcon, { backgroundColor: isDarkMode ? 'rgba(78, 205, 196, 0.2)' : 'rgba(0, 170, 102, 0.1)' }]}>
-              <Ionicons name="piggy-bank-outline" size={20} color={isDarkMode ? '#4ECDC4' : '#00aa66'} />
+              <Ionicons name="wallet-outline" size={20} color={isDarkMode ? '#4ECDC4' : '#00aa66'} />
             </View>
             <View>
               <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Ahorros</Text>
@@ -176,12 +201,13 @@ const DashboardScreen = ({ navigation }) => {
             <View style={styles.pieChartWrapper}>
               <PieChart
                 data={pieChartData}
-                width={screenWidth - 40}
+                width={(screenWidth - 40) / 2}
                 height={180}
                 chartConfig={chartConfig}
                 accessor="population"
                 backgroundColor="transparent"
-                paddingLeft="15"
+                paddingLeft="0"
+                center={[((screenWidth - 40) / 2) / 4, 0]}
                 absolute
                 hasLegend={false}
               />
@@ -205,8 +231,8 @@ const DashboardScreen = ({ navigation }) => {
         <View style={styles.transactionsSection}>
           <View style={styles.transactionsHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Transacciones Recientes</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Transactions')}>
-              <Text style={[styles.seeAllText, { color: isDarkMode ? '#00C2FF' : '#0066cc' }]}>Ver todo</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('AddTransaction')}>
+              <Text style={[styles.seeAllText, { color: isDarkMode ? '#00C2FF' : '#0066cc' }]}>Agregar</Text>
             </TouchableOpacity>
           </View>
           {filteredTransactions.slice(0, 5).map((transaction) => {
@@ -217,7 +243,12 @@ const DashboardScreen = ({ navigation }) => {
             const formattedDate = date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
             
             return (
-              <TouchableOpacity key={transaction.id} style={[styles.transactionItem, { backgroundColor: colors.surface }]}>
+              <TouchableOpacity 
+                key={transaction.id} 
+                style={[styles.transactionItem, { backgroundColor: colors.surface }]}
+                onLongPress={() => handleTransactionLongPress(transaction)}
+                delayLongPress={500}
+              >
                 <View style={[styles.transactionIcon, { backgroundColor: `${color}20` }]}>
                   <Ionicons name={icon} size={24} color={color} />
                 </View>
@@ -228,10 +259,10 @@ const DashboardScreen = ({ navigation }) => {
                 <View style={styles.transactionAmountContainer}>
                   <Text style={[
                     styles.transactionAmount, 
-                    transaction.amount > 0 ? styles.amountPositive : styles.amountNegative,
-                    { color: transaction.amount > 0 ? colors.success : colors.error }
+                    transaction.type === 'income' ? styles.amountPositive : styles.amountNegative,
+                    { color: transaction.type === 'income' ? colors.success : colors.error }
                   ]}>
-                    {transaction.amount > 0 ? '+' : ''}${Math.abs(transaction.amount).toFixed(2)}
+                    {transaction.type === 'income' ? '+' : '-'}${Math.abs(transaction.amount).toFixed(2)}
                   </Text>
                   <Text style={[styles.transactionDate, { color: colors.textTertiary }]}>{formattedDate}</Text>
                 </View>
@@ -245,12 +276,28 @@ const DashboardScreen = ({ navigation }) => {
       </ScrollView>
 
       {/* Floating Action Button */}
-      <TouchableOpacity style={[styles.fab, { backgroundColor: isDarkMode ? '#00C2FF' : '#0066cc' }]} onPress={() => navigation.navigate('AddTransaction')}>
+      <TouchableOpacity 
+        style={[
+          styles.fab, 
+          { 
+            backgroundColor: isDarkMode ? '#00C2FF' : '#0066cc',
+            bottom: Math.max(insets.bottom, 12) + 85
+          }
+        ]} 
+        onPress={() => navigation.navigate('AddTransaction')}
+      >
         <Ionicons name="add" size={28} color="#000" />
       </TouchableOpacity>
 
       {/* Bottom Navigation */}
-      <View style={[styles.bottomNav, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+      <View style={[
+        styles.bottomNav, 
+        { 
+          backgroundColor: colors.surface, 
+          borderTopColor: colors.border,
+          paddingBottom: Math.max(insets.bottom, 12) + (Platform.OS === 'android' ? 10 : 0)
+        }
+      ]}>
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="home" size={24} color={isDarkMode ? '#00C2FF' : '#0066cc'} />
           <Text style={[styles.navText, { color: isDarkMode ? '#00C2FF' : '#0066cc' }]}>Inicio</Text>
@@ -506,7 +553,7 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 90,
+    bottom: 110,
     right: 20,
     width: 56,
     height: 56,

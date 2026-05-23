@@ -16,7 +16,7 @@ import Checkbox from '../../components/ui/Checkbox';
 import SocialButton from '../../components/ui/SocialButton';
 
 const LoginScreen = ({ navigation }) => {
-  const { login } = useAuth();
+  const { login, loginWithGoogle, loginWithFacebook } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -118,8 +118,8 @@ const LoginScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.socialButtons}>
-            <SocialButton icon="logo-google" onPress={() => {}} />
-            <SocialButton icon="logo-apple" onPress={() => {}} />
+            <SocialButton icon="logo-google" onPress={loginWithGoogle} />
+            <SocialButton icon="logo-facebook" onPress={loginWithFacebook} />
           </View>
 
           <View style={styles.footer}>

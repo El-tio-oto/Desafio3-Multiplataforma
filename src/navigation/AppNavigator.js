@@ -12,6 +12,7 @@ import AccountsScreen from '../screens/AccountsScreen';
 import BudgetsScreen from '../screens/BudgetsScreen';
 import StatisticsScreen from '../screens/StatisticsScreen';
 import AddTransactionScreen from '../screens/AddTransactionScreen';
+import EditTransactionScreen from '../screens/EditTransactionScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -41,6 +42,7 @@ const AppStack = () => (
     <Stack.Screen name="Budgets" component={BudgetsScreen} />
     <Stack.Screen name="Statistics" component={StatisticsScreen} />
     <Stack.Screen name="AddTransaction" component={AddTransactionScreen} />
+    <Stack.Screen name="EditTransaction" component={EditTransactionScreen} />
   </Stack.Navigator>
 );
 
