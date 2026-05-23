@@ -1,35 +1,17 @@
-import React, { createContext, useState, useContext } from 'react';
+import { createClient } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const AuthContext = createContext(null);
+// IMPORTANTE: Reemplaza esta URL con la URL de tu proyecto Supabase.
+// La puedes encontrar en tu panel de Supabase en: Project Settings -> API -> Project URL
+const supabaseUrl = 'https://myseeypcugioaeflmwsm.supabase.co'; 
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(false); // Ponlo en false para que no se trabe en carga
+const supabaseAnonKey = 'sb_publishable_rAeu3qb6DvfYFHah6K5m7Q_9eHnapiS';
 
-  const login = async (email, password) => {
-    // Simulamos un login exitoso
-    setUser({ email, fullName: 'Usuario Prueba' });
-    return { success: true };
-  };
-
-  const register = async (fullName, email, password) => {
-    setUser({ email, fullName });
-    return { success: true };
-  };
-
-  const logout = async () => {
-    setUser(null);
-  };
-
-  const value = {
-    user,
-    isLoading,
-    login,
-    register,
-    logout,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-export const useAuth = () => useContext(AuthContext);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: AsyncStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+});
