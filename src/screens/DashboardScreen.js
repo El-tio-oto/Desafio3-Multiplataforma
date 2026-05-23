@@ -1,19 +1,22 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
-const DashboardScreen = () => {
+const DashboardScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.logo}>ZENITH</Text>
+        <TouchableOpacity onPress={() => console.log('Ir a perfil')}>
+          <Text style={styles.navLink}>Perfil</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
         <Text style={styles.welcome}>Bienvenido, {user?.fullName || 'Usuario'}!</Text>
-        <Text style={styles.subtitle}>Dashboard placeholder</Text>
+        <Text style={styles.subtitle}>Dashboard</Text>
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Balance Total</Text>
@@ -24,7 +27,7 @@ const DashboardScreen = () => {
           <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -34,27 +37,35 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
   },
   header: {
-    padding: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#2a2a4a',
   },
   logo: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#00C2FF',
-    letterSpacing: 4,
+    letterSpacing: 2,
+  },
+  navLink: {
+    color: '#00C2FF',
+    fontSize: 16,
+    fontWeight: '500',
   },
   content: {
     flex: 1,
     padding: 24,
-    justifyContent: 'center',
     alignItems: 'center',
   },
   welcome: {
     fontSize: 24,
     fontWeight: '600',
     color: '#fff',
+    marginTop: 20,
     marginBottom: 8,
   },
   subtitle: {
@@ -90,6 +101,7 @@ const styles = StyleSheet.create({
     padding: 16,
     width: '100%',
     alignItems: 'center',
+    marginTop: 'auto',
   },
   logoutButtonText: {
     color: '#ff4444',
